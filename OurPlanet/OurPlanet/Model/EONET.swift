@@ -91,10 +91,10 @@ class EONET {
 
     /// Events API
     
-    static func events(forLast days: Int = 360) -> Observable<[EOEvent]> {
+    static func events(forLast days: Int = 360, category: EOCategory) -> Observable<[EOEvent]> {
         
-        let openEvents = events(forLast: days, closed: false)
-        let closedEvents = events(forLast: days, closed: true)
+        let openEvents = events(forLast: days, closed: false, endpoint: category.endpoint)
+        let closedEvents = events(forLast: days, closed: true, endpoint: category.endpoint)
         
         return Observable.of(openEvents, closedEvents)
             .merge()
@@ -103,16 +103,16 @@ class EONET {
         }
     }
     
-    private static func events(forLast days: Int, closed: Bool) -> Observable<[EOEvent]> {
+    private static func events(forLast days: Int, closed: Bool, endpoint: String) -> Observable<[EOEvent]> {
         // pass parameter: number of days needed, closed or open
-        return request(endpoint: eventsEndpoint, query: [
+        return request(endpoint: endpoint, query: [
             "days": NSNumber(value: days),
             "status": (closed ? "closed" : "open")
             ])
             // RxSwift map
             .map({ json -> [EOEvent] in
                 guard let raw = json["events"] as? [[String: Any]] else {
-                    throw EOError.invalidJSON(eventsEndpoint)
+                    throw EOError.invalidJSON(endpoint)
                 }
                 // Array flatmap
                 return raw.flatMap({ json -> EOEvent? in

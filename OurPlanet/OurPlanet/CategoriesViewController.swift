@@ -41,19 +41,28 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
         
         // bind value
         let eoCategories = EONET.categories
-        let downloadedEvents = EONET.events(forLast: 360)
+        let downloadedEvents = eoCategories.flatMap { categories in
+            return Observable.from(categories.map({ category in
+                EONET.events(forLast: 360, category: category)
+            }))
+            }.merge(maxConcurrent: 2) // Limit to emit only 2 events in the same time
         
         // Download the events and categories and combine the categories in one observable
-        let updatedCategories = Observable.combineLatest(eoCategories, downloadedEvents) {
-            (categories, events) -> [EOCategory] in
-            return categories.map({ category in
-                var cat = category
-                cat.events = events.filter {
-                    $0.categories.contains(category.id)
+        let updatedCategories = eoCategories.flatMap { categories in
+            downloadedEvents.scan(categories) { updated, events in
+                return updated.map { category in
+                    let eventsForCategory = EONET.filteredEvents(events: events, forCategory: category)
+                    if !eventsForCategory.isEmpty {
+                        var cat = category
+                        cat.events = cat.events + eventsForCategory
+                        return cat
+                    }
+                    
+                    return category
                 }
-                return cat
-            })
+            }
         }
+        
         // Download categories and display them, then download updatedCategories
         eoCategories
             .concat(updatedCategories)
