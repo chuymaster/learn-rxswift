@@ -256,5 +256,3 @@ example(of: "Challenge of zip code") {
 //    let zip = Observable.zip
 
 }
-
-
