@@ -89,6 +89,33 @@ class EONET {
         }
     }
 
+    /// Events API
+    
+    static func events(forLast days: Int = 360) -> Observable<[EOEvent]> {
+        
+        let openEvents = events(forLast: days, closed: false)
+        let closedEvents = events(forLast: days, closed: true)
+        
+        return openEvents.concat(closedEvents)
+    }
+    
+    private static func events(forLast days: Int, closed: Bool) -> Observable<[EOEvent]> {
+        // pass parameter: number of days needed, closed or open
+        return request(endpoint: eventsEndpoint, query: [
+            "days": NSNumber(value: days),
+            "status": (closed ? "closed" : "open")
+            ])
+            // RxSwift map
+            .map({ json -> [EOEvent] in
+                guard let raw = json["events"] as? [[String: Any]] else {
+                    throw EOError.invalidJSON(eventsEndpoint)
+                }
+                // Array flatmap
+                return raw.flatMap({ json -> EOEvent? in
+                    EOEvent(json: json)
+                })
+            })
+    }
     
 }
 
