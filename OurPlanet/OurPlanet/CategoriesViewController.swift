@@ -62,6 +62,7 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
         
         // Download the events and categories and combine the categories in one observable
         let updatedCategories = eoCategories.flatMap { categories in
+            // Scan checks categories for update and if updated, emit events in closure
             downloadedEvents.scan(categories) { updated, events in
                 self.downloadedCategories.value += 1
                 return updated.map { category in
@@ -77,6 +78,7 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
             }.do(onCompleted: { [weak self] in
                 DispatchQueue.main.async {
                     self?.activityIndicator.stopAnimating()
+                    self?.progressView.isHidden = true
                 }
             })
         
