@@ -107,7 +107,7 @@ open class TimelineViewBase : UIView {
   }
   
   func detachDisplayLink() {
-    displayLink?.remove(from: RunLoop.main, forMode: .commonModes)
+    displayLink?.remove(from: RunLoop.main, forMode: RunLoop.Mode.tracking)
     displayLink = nil
   }
   
@@ -118,7 +118,7 @@ open class TimelineViewBase : UIView {
       detachDisplayLink()
     } else {
       displayLink = CADisplayLink(target: self, selector: #selector(update(_:)))
-      displayLink?.add(to: RunLoop.main, forMode: .commonModes)
+      displayLink?.add(to: RunLoop.main, forMode: RunLoop.Mode.common)
     }
   }
   
@@ -128,7 +128,7 @@ open class TimelineViewBase : UIView {
     super.draw(rect)
   }
   
-  func update(_ sender: CADisplayLink) {
+  @objc func update(_ sender: CADisplayLink) {
     let now = Date()
     let start = now.addingTimeInterval(-11)
     let width = frame.width
