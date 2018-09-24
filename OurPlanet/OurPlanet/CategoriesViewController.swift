@@ -28,16 +28,29 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
     
     let categories = Variable<[EOCategory]>([])
     let disposeBag = DisposeBag()
+    let downloadedCategories = Variable<Int>(0)
+    lazy var activityIndicator = UIActivityIndicatorView()
+    @IBOutlet var progressView: UIProgressView!
     
     @IBOutlet var tableView: UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        activityIndicator.color = .black
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: activityIndicator)
         
         startDownload()
     }
     
     func startDownload() {
+        
+        activityIndicator.startAnimating()
+        
+        _ = downloadedCategories.asDriver().drive(onNext: { number in
+            DispatchQueue.main.async {
+                self.progressView.progress = Float(number)/Float(self.categories.value.count)
+            }
+        })
         
         // bind value
         let eoCategories = EONET.categories
@@ -50,6 +63,7 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
         // Download the events and categories and combine the categories in one observable
         let updatedCategories = eoCategories.flatMap { categories in
             downloadedEvents.scan(categories) { updated, events in
+                self.downloadedCategories.value += 1
                 return updated.map { category in
                     let eventsForCategory = EONET.filteredEvents(events: events, forCategory: category)
                     if !eventsForCategory.isEmpty {
@@ -57,11 +71,14 @@ class CategoriesViewController: UIViewController, UITableViewDataSource, UITable
                         cat.events = cat.events + eventsForCategory
                         return cat
                     }
-                    
                     return category
                 }
             }
-        }
+            }.do(onCompleted: { [weak self] in
+                DispatchQueue.main.async {
+                    self?.activityIndicator.stopAnimating()
+                }
+            })
         
         // Download categories and display them, then download updatedCategories
         eoCategories
