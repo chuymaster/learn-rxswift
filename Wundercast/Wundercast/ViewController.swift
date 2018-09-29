@@ -49,18 +49,79 @@ class ViewController: UIViewController {
             self.cityNameLabel.text = data.cityName
         }).disposed(by: disposeBag)
     
-    searchCityName.rx.text
-        .filter { ($0 ?? "").count > 0 }
-        .flatMap { text  in
-            return ApiController.shared.currentWeather(city: text ?? "Error")
-                .catchErrorJustReturn(ApiController.Weather.empty)
-        }.observeOn(MainScheduler.instance)
-        .subscribe(onNext: { data in
-            self.tempLabel.text = "\(data.temperature)° C"
-            self.iconLabel.text = data.icon
-            self.humidityLabel.text = "\(data.humidity)%"
-            self.cityNameLabel.text = data.cityName
-        }).disposed(by: disposeBag)
+//    searchCityName.rx.text
+//        .filter { ($0 ?? "").count > 0 }
+//        .flatMap { text  in
+//            return ApiController.shared.currentWeather(city: text ?? "Error")
+//                .catchErrorJustReturn(ApiController.Weather.empty)
+//        }.observeOn(MainScheduler.instance)
+//        .subscribe(onNext: { data in
+//            self.tempLabel.text = "\(data.temperature)° C"
+//            self.iconLabel.text = data.icon
+//            self.humidityLabel.text = "\(data.humidity)%"
+//            self.cityNameLabel.text = data.cityName
+//        }).disposed(by: disposeBag)
+//
+    
+    // More elegant way to bind
+//    let search = searchCityName.rx.text
+//        .filter { ($0 ?? "").count > 0 }
+//        .flatMapLatest { text in
+//            return ApiController.shared.currentWeather(city: text ?? "Error")
+//                .catchErrorJustReturn(ApiController.Weather.empty)
+//        }
+//        .share(replay: 1)
+//        .observeOn(MainScheduler.instance)
+//
+//
+//    search.map { weather in
+//        "\(weather.temperature)° C"
+//        }.bind(to: tempLabel.rx.text)
+//        .disposed(by: disposeBag)
+//
+//    search.map { $0.icon }
+//        .bind(to:iconLabel.rx.text)
+//        .disposed(by: disposeBag)
+//
+//    search.map { "\($0.humidity)%" }
+//        .bind(to:humidityLabel.rx.text)
+//        .disposed(by: disposeBag)
+//    search.map { $0.cityName }
+//        .bind(to:cityNameLabel.rx.text)
+//        .disposed(by: disposeBag)
+//
+    
+    // Use Driver instead of bind
+    
+    let search =
+        searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
+            .map { self.searchCityName.text }
+            .flatMap { text in
+                return ApiController.shared.currentWeather(city: text ?? "Error")
+            }
+            .asDriver(onErrorJustReturn: ApiController.Weather.empty)
+    
+//    let search = searchCityName.rx.text
+//        .filter { ($0 ?? "").count > 0 }
+//        .flatMapLatest { text in
+//            return ApiController.shared.currentWeather(city: text ?? "Error")
+//                .catchErrorJustReturn(ApiController.Weather.empty)
+//    }.asDriver(onErrorJustReturn: ApiController.Weather.empty)
+    
+    search.map { "\($0.temperature)° C" }
+        .drive(tempLabel.rx.text)
+        .disposed(by: disposeBag)
+    search.map { $0.icon }
+        .drive(iconLabel.rx.text)
+        .disposed(by: disposeBag)
+    search.map { "\($0.humidity)%" }
+        .drive(humidityLabel.rx.text)
+        .disposed(by: disposeBag)
+    search.map { $0.cityName }
+        .drive(cityNameLabel.rx.text)
+        .disposed(by: disposeBag)
+    
+    
   }
 
   override func viewDidAppear(_ animated: Bool) {
