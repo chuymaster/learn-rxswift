@@ -31,6 +31,8 @@ class ViewController: UIViewController {
   @IBOutlet weak var humidityLabel: UILabel!
   @IBOutlet weak var iconLabel: UILabel!
   @IBOutlet weak var cityNameLabel: UILabel!
+    
+    let disposeBag = DisposeBag()
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -38,6 +40,27 @@ class ViewController: UIViewController {
 
     style()
 
+    ApiController.shared.currentWeather(city: "RxSwift")
+        .observeOn(MainScheduler.instance)
+        .subscribe(onNext: { data in
+            self.tempLabel.text = "\(data.temperature)° C"
+            self.iconLabel.text = data.icon
+            self.humidityLabel.text = "\(data.humidity)%"
+            self.cityNameLabel.text = data.cityName
+        }).disposed(by: disposeBag)
+    
+    searchCityName.rx.text
+        .filter { ($0 ?? "").count > 0 }
+        .flatMap { text  in
+            return ApiController.shared.currentWeather(city: text ?? "Error")
+                .catchErrorJustReturn(ApiController.Weather.empty)
+        }.observeOn(MainScheduler.instance)
+        .subscribe(onNext: { data in
+            self.tempLabel.text = "\(data.temperature)° C"
+            self.iconLabel.text = data.icon
+            self.humidityLabel.text = "\(data.humidity)%"
+            self.cityNameLabel.text = data.cityName
+        }).disposed(by: disposeBag)
   }
 
   override func viewDidAppear(_ animated: Bool) {
