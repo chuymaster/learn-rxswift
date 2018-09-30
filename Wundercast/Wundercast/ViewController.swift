@@ -31,6 +31,8 @@ class ViewController: UIViewController {
   @IBOutlet weak var humidityLabel: UILabel!
   @IBOutlet weak var iconLabel: UILabel!
   @IBOutlet weak var cityNameLabel: UILabel!
+    @IBOutlet weak var temperatureSwitch: UISwitch!
+    
     
     let disposeBag = DisposeBag()
 
@@ -40,14 +42,14 @@ class ViewController: UIViewController {
 
     style()
 
-    ApiController.shared.currentWeather(city: "RxSwift")
-        .observeOn(MainScheduler.instance)
-        .subscribe(onNext: { data in
-            self.tempLabel.text = "\(data.temperature)° C"
-            self.iconLabel.text = data.icon
-            self.humidityLabel.text = "\(data.humidity)%"
-            self.cityNameLabel.text = data.cityName
-        }).disposed(by: disposeBag)
+//    ApiController.shared.currentWeather(city: "RxSwift")
+//        .observeOn(MainScheduler.instance)
+//        .subscribe(onNext: { data in
+//            self.tempLabel.text = "\(data.temperature)° C"
+//            self.iconLabel.text = data.icon
+//            self.humidityLabel.text = "\(data.humidity)%"
+//            self.cityNameLabel.text = data.cityName
+//        }).disposed(by: disposeBag)
     
 //    searchCityName.rx.text
 //        .filter { ($0 ?? "").count > 0 }
@@ -92,24 +94,55 @@ class ViewController: UIViewController {
 //
     
     // Use Driver instead of bind
+//
+//    let search =
+//        searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
+//            .map { self.searchCityName.text }
+//            .flatMap { text in
+//                return ApiController.shared.currentWeather(city: text ?? "Error")
+//            }
+//            .asDriver(onErrorJustReturn: ApiController.Weather.empty)
+//
+//    search.map { weather -> String in
+//            if self.temperatureSwitch.isOn {
+//                let f = self.calculateFahrenheit(celcius: CGFloat(weather.temperature))
+//                return "\(f)° F"
+//            } else {
+//                return "\(weather.temperature)° C"
+//            }
+//        }.drive(tempLabel.rx.text)
+//        .disposed(by: disposeBag)
+//    search.map { $0.icon }
+//        .drive(iconLabel.rx.text)
+//        .disposed(by: disposeBag)
+//    search.map { "\($0.humidity)%" }
+//        .drive(humidityLabel.rx.text)
+//        .disposed(by: disposeBag)
+//    search.map { $0.cityName }
+//        .drive(cityNameLabel.rx.text)
+//        .disposed(by: disposeBag)
+//
     
-    let search =
-        searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
+    // Challenge
+    
+    let textSearch = searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
+    let temperature = temperatureSwitch.rx.controlEvent(.valueChanged).asObservable()
+    
+    let search = Observable.from([textSearch, temperature]).merge()
             .map { self.searchCityName.text }
             .flatMap { text in
                 return ApiController.shared.currentWeather(city: text ?? "Error")
             }
             .asDriver(onErrorJustReturn: ApiController.Weather.empty)
     
-//    let search = searchCityName.rx.text
-//        .filter { ($0 ?? "").count > 0 }
-//        .flatMapLatest { text in
-//            return ApiController.shared.currentWeather(city: text ?? "Error")
-//                .catchErrorJustReturn(ApiController.Weather.empty)
-//    }.asDriver(onErrorJustReturn: ApiController.Weather.empty)
-    
-    search.map { "\($0.temperature)° C" }
-        .drive(tempLabel.rx.text)
+    search.map { weather -> String in
+        if self.temperatureSwitch.isOn {
+            let f = self.calculateFahrenheit(celcius: CGFloat(weather.temperature))
+            return "\(f)° F"
+        } else {
+            return "\(weather.temperature)° C"
+        }
+        }.drive(tempLabel.rx.text)
         .disposed(by: disposeBag)
     search.map { $0.icon }
         .drive(iconLabel.rx.text)
@@ -120,7 +153,6 @@ class ViewController: UIViewController {
     search.map { $0.cityName }
         .drive(cityNameLabel.rx.text)
         .disposed(by: disposeBag)
-    
     
   }
 
@@ -153,5 +185,9 @@ class ViewController: UIViewController {
     iconLabel.textColor = UIColor.cream
     cityNameLabel.textColor = UIColor.cream
   }
+    
+    private func calculateFahrenheit(celcius: CGFloat) -> CGFloat {
+        return celcius * 1.8 + 32
+    }
 }
 
