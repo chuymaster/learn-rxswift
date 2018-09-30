@@ -44,16 +44,46 @@ class ViewController: UIViewController {
     // Do any additional setup after loading the view, typically from a nib.
 
     style()
+    
+    let searchInput = searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
+        .map { self.searchCityName.text }
+        .filter { ($0 ?? "").count > 0 }
 
-    let search = searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
-      .map { self.searchCityName.text }
-      .filter { ($0 ?? "").count > 0 }
+    let search = searchInput
       .flatMap { text in
         return ApiController.shared.currentWeather(city: text ?? "Error")
           .catchErrorJustReturn(ApiController.Weather.dummy)
       }
       .asDriver(onErrorJustReturn: ApiController.Weather.dummy)
 
+    // Create observable of observables to observe if either of them is running or not
+    let running = Observable.from([
+        searchInput.map {_ in true }, // Running = true after search input .editingDidEndOnExit
+        search.map { _ in false }.asObservable() // Running = false after search api call is finished
+        ])
+    .merge()
+    .startWith(true)
+    .asDriver(onErrorJustReturn: false)
+    
+    running
+        .skip(1)
+        .drive(activityIndicator.rx.isAnimating)
+        .disposed(by: bag)
+    
+    running
+        .drive(tempLabel.rx.isHidden)
+        .disposed(by: bag)
+    running
+        .drive(iconLabel.rx.isHidden)
+        .disposed(by: bag)
+    running
+        .drive(humidityLabel.rx.isHidden)
+        .disposed(by: bag)
+    running
+        .drive(cityNameLabel.rx.isHidden)
+        .disposed(by: bag)
+    
+    
     search.map { "\($0.temperature)° C" }
       .drive(tempLabel.rx.text)
       .disposed(by: bag)
