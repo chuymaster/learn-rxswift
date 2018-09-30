@@ -47,20 +47,47 @@ class ViewController: UIViewController {
 
     style()
     
+    // Geo location
+    let currentLocations = locationManager.rx.didUpdateLocations
+        .map { locations in
+            return locations.first!
+        }.filter { location in
+            return location.horizontalAccuracy < kCLLocationAccuracyHundredMeters
+    }
+    
+    let geoInput = geoLocationButton.rx.tap.asObservable()
+        .do(onNext: {
+            self.locationManager.requestWhenInUseAuthorization()
+            self.locationManager.startUpdatingLocation()
+        })
+    
+    let geoLocation = geoInput.flatMap {
+        return currentLocations.take(1)
+    }
+    
+    let geoSearch = geoLocation.flatMap { location  in
+        return ApiController.shared.currentWeather(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
+            .catchErrorJustReturn(ApiController.Weather.dummy)
+    }
+    
     let searchInput = searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
         .map { self.searchCityName.text }
         .filter { ($0 ?? "").count > 0 }
 
-    let search = searchInput
-      .flatMap { text in
+    let textSearch = searchInput.flatMap { text in
         return ApiController.shared.currentWeather(city: text ?? "Error")
           .catchErrorJustReturn(ApiController.Weather.dummy)
       }
-      .asDriver(onErrorJustReturn: ApiController.Weather.dummy)
-
+    
+    let search = Observable.from([
+            geoSearch, textSearch
+        ]).merge()
+    .asDriver(onErrorJustReturn: ApiController.Weather.dummy)
+    
     // Create observable of observables to observe if either of them is running or not
     let running = Observable.from([
-        searchInput.map {_ in true }, // Running = true after search input .editingDidEndOnExit
+        searchInput.map { _ in true }, // Running = true after search input .editingDidEndOnExit
+        geoInput.map { _ in true }, // Running = true after geo input changes
         search.map { _ in false }.asObservable() // Running = false after search api call is finished
         ])
     .merge()
@@ -101,17 +128,6 @@ class ViewController: UIViewController {
     search.map { $0.cityName }
       .drive(cityNameLabel.rx.text)
       .disposed(by: bag)
-
-    geoLocationButton.rx.tap
-        .subscribe(onNext: { _ in
-            self.locationManager.requestWhenInUseAuthorization()
-            self.locationManager.startUpdatingLocation()
-        }).disposed(by: bag)
-    
-    locationManager.rx.didUpdateLocations
-        .subscribe(onNext: { locations in
-            print(locations)
-        }).disposed(by: bag)
   }
 
   override func viewDidAppear(_ animated: Bool) {
