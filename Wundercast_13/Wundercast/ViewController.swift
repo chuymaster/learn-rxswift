@@ -79,8 +79,19 @@ class ViewController: UIViewController {
           .catchErrorJustReturn(ApiController.Weather.dummy)
       }
     
+    // Get map center when changed
+    let mapInput = mapView.rx.regionDidChangeAnimated
+        .skip(1) // skip(1) prevents the application from firing a search right after the mapView has initialized.
+        .map{ _ in self.mapView.centerCoordinate }
+    
+    // Map it to API Search
+    let mapSearch = mapInput.flatMap { coordinate in
+        return ApiController.shared.currentWeather(lat: coordinate.latitude, lon: coordinate.longitude)
+        .catchErrorJustReturn(ApiController.Weather.empty)
+    }
+    
     let search = Observable.from([
-            geoSearch, textSearch
+            geoSearch, textSearch, mapSearch
         ]).merge()
     .asDriver(onErrorJustReturn: ApiController.Weather.dummy)
     
@@ -88,6 +99,7 @@ class ViewController: UIViewController {
     let running = Observable.from([
         searchInput.map { _ in true }, // Running = true after search input .editingDidEndOnExit
         geoInput.map { _ in true }, // Running = true after geo input changes
+        mapInput.map { _ in true },
         search.map { _ in false }.asObservable() // Running = false after search api call is finished
         ])
     .merge()
