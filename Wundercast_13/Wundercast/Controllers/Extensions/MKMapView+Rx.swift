@@ -24,3 +24,48 @@ import Foundation
 import MapKit
 import RxSwift
 import RxCocoa
+
+
+
+class RxMKMapViewDelegateProxy
+    : DelegateProxy<MKMapView, MKMapViewDelegate>
+    , MKMapViewDelegate
+    , DelegateProxyType {
+    
+    static func registerKnownImplementations() {
+        self.register { parent -> RxMKMapViewDelegateProxy in
+            return RxMKMapViewDelegateProxy(parentObject: parent, delegateProxy: RxMKMapViewDelegateProxy.self)
+        }
+    }
+    
+    static func currentDelegate(for object: MKMapView) -> MKMapViewDelegate? {
+        return object.delegate
+    }
+    
+    static func setCurrentDelegate(_ delegate: MKMapViewDelegate?, to object: MKMapView) {
+        object.delegate = delegate
+    }
+    
+    
+}
+
+extension Reactive where Base: MKMapView {
+    public var delegate: DelegateProxy<MKMapView, MKMapViewDelegate> {
+        return RxMKMapViewDelegateProxy.proxy(for: base)
+    }
+    
+    public func setDelegate(_ delegate: MKMapViewDelegate) -> Disposable {
+        return RxMKMapViewDelegateProxy.installForwardDelegate(
+            delegate,
+            retainDelegate: false,
+            onProxyForObject: self.base
+        )
+    }
+    
+    var overlays: UIBindingObserver<Base, [MKOverlay]> {
+        return UIBindingObserver(UIElement: self.base) { mapView, overlays in
+            mapView.removeOverlays(mapView.overlays)
+            mapView.addOverlays(overlays)
+        }
+    }
+}

@@ -128,6 +128,21 @@ class ViewController: UIViewController {
     search.map { $0.cityName }
       .drive(cityNameLabel.rx.text)
       .disposed(by: bag)
+    
+    // Map
+    mapButton.rx.tap
+        .subscribe(onNext: {
+            self.mapView.isHidden = !self.mapView.isHidden
+        })
+        .disposed(by: bag)
+    
+    mapView.rx.setDelegate(self)
+        .disposed(by: bag)
+    
+    search.map { weather in
+        return [weather.overlay()]
+    }.drive(mapView.rx.overlays)
+    .disposed(by: bag)
   }
 
   override func viewDidAppear(_ animated: Bool) {
@@ -161,3 +176,14 @@ class ViewController: UIViewController {
   }
 }
 
+extension ViewController: MKMapViewDelegate {
+    
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        if let overlay = overlay as? ApiController.Weather.Overlay {
+            let overlayView = ApiController.Weather.OverlayView(overlay: overlay,
+                                                                overlayIcon: overlay.icon)
+            return overlayView
+        }
+        return MKOverlayRenderer()
+    }
+}
