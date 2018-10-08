@@ -70,6 +70,11 @@ class ViewController: UIViewController {
             .catchErrorJustReturn(ApiController.Weather.dummy)
     }
     
+    geoSearch.map { weather in
+        return CLLocationCoordinate2D(latitude: weather.lat, longitude: weather.lon)
+    }.asDriver(onErrorJustReturn: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+        .drive(mapView.rx.coordinate).disposed(by: bag)
+    
     let searchInput = searchCityName.rx.controlEvent(.editingDidEndOnExit).asObservable()
         .map { self.searchCityName.text }
         .filter { ($0 ?? "").count > 0 }
@@ -78,6 +83,11 @@ class ViewController: UIViewController {
         return ApiController.shared.currentWeather(city: text ?? "Error")
           .catchErrorJustReturn(ApiController.Weather.dummy)
       }
+    
+    textSearch.map { weather in
+        return CLLocationCoordinate2D(latitude: weather.lat, longitude: weather.lon)
+        }.asDriver(onErrorJustReturn: CLLocationCoordinate2D(latitude: 0, longitude: 0))
+        .drive(mapView.rx.coordinate).disposed(by: bag)
     
     // Get map center when changed
     let mapInput = mapView.rx.regionDidChangeAnimated

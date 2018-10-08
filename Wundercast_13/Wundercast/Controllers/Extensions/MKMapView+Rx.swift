@@ -67,6 +67,13 @@ extension Reactive where Base: MKMapView {
         }
     }
     
+    // Coordinate observer to set map centerCoordinate
+    var coordinate: UIBindingObserver<Base, CLLocationCoordinate2D> {
+        return UIBindingObserver(UIElement: self.base) { mapViews, coordinate in
+            mapViews.centerCoordinate = coordinate
+        }
+    }
+    
     public var regionDidChangeAnimated: ControlEvent<Bool> {
         let source = delegate
             .methodInvoked(#selector(MKMapViewDelegate.mapView(_:regionDidChangeAnimated:)))
