@@ -34,6 +34,7 @@ class ApiController {
   /// The api key to communicate with openweathermap.org
   /// Create you own on https://home.openweathermap.org/users/sign_up
   let apiKey = BehaviorSubject(value: "249fffd65b3eaebc7f0055c9dfa9589d")
+//    let apiKey = BehaviorSubject(value: "")
 
   /// API base URL
   let baseURL = URL(string: "http://api.openweathermap.org/data/2.5")!
@@ -47,6 +48,7 @@ class ApiController {
   enum ApiError: Error {
     case cityNotFound
     case serverFailure
+    case invalidKey
   }
 
   //MARK: - Api Calls
@@ -119,6 +121,8 @@ class ApiController {
         return session.rx.response(request: request).map({ (response, data) -> JSON in
             if 200 ..< 300 ~= response.statusCode {
                 return try! JSON(data: data)
+            } else if response.statusCode == 401 {
+                throw ApiError.invalidKey
             } else if 400 ..< 500 ~= response.statusCode {
                 throw ApiError.cityNotFound
             } else {
