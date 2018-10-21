@@ -31,6 +31,41 @@ let animal = BehaviorSubject(value: "[dog]")
 
 
 animal
-  .dump()
-  .dumpingSubscription()
-  .disposed(by: bag)
+    .subscribeOn(MainScheduler.instance) // THIS WILL NOT WORK because we specified animals thread.
+    .dump()
+    .observeOn(globalScheduler)
+    .dumpingSubscription()
+    .disposed(by: bag)
+
+//  using Observable.create puts Rx in control of what happens inside the Thread block so you can more finely customize thread handling.
+let fruit = Observable<String>.create { observer in
+    observer.onNext("[apple]")
+    sleep(2)
+    observer.onNext("[pineapple]")
+    sleep(2)
+    observer.onNext("[strawberry]")
+    return Disposables.create()
+}
+
+fruit
+    .subscribeOn(globalScheduler)
+    .dump() // onNext runs on global thread
+    .observeOn(MainScheduler.instance)
+    .dumpingSubscription() // subscribe runs on main thread
+    .disposed(by: bag)
+
+
+let animalsThread = Thread() {
+    sleep(3)
+    animal.onNext("[cat]")
+    sleep(3)
+    animal.onNext("[tiger]")
+    sleep(3)
+    animal.onNext("[fox]")
+    sleep(3)
+    animal.onNext("[leopard]")
+}
+animalsThread.name = "Animals Thread"
+animalsThread.start()
+
+RunLoop.main.run(until: Date(timeIntervalSinceNow: 13))
