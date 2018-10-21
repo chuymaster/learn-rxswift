@@ -116,7 +116,15 @@ class ApiController {
 
     let session = URLSession.shared
     return request.flatMap() { request in
-      return session.rx.data(request: request).map { try! JSON(data: $0) }
+        return session.rx.response(request: request).map({ (response, data) -> JSON in
+            if 200 ..< 300 ~= response.statusCode {
+                return try! JSON(data: data)
+            } else if 400 ..< 500 ~= response.statusCode {
+                throw ApiError.cityNotFound
+            } else {
+                throw ApiError.serverFailure
+            }
+        })
     }
   }
 
